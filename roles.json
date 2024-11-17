@@ -1,0 +1,259 @@
+{
+  "Black Drone": {
+    "difficulty": "★",
+    "species": "SPAWN",
+    "hive_rank": 1,
+    "allegiance": "Spawn Victory",
+    "power": "You fail blood tests."
+  },
+  "Red Drone": {
+    "difficulty": "★",
+    "species": "SPAWN",
+    "hive_rank": 2,
+    "allegiance": "Spawn Victory",
+    "power": "You fail blood tests."
+  },
+  "Symbiote": {
+    "difficulty": "★",
+    "species": "SPAWN",
+    "hive_rank": 3,
+    "allegiance": "Spawn Victory",
+    "power": "Latch: Votes for you are halved. The M.O.D. selects one non-Spawn player to know you are the Symbiote and you learn their role. If either of you dies, both of you die. You do not win together. You fail blood tests."
+  },
+  "Psiok": {
+    "difficulty": "★",
+    "species": "SPAWN",
+    "hive_rank": 4,
+    "allegiance": "Spawn Victory",
+    "power": "Possess: Each cryosleep after the first round you can choose a player to receive false information with their hidden role ability. You fail blood tests."
+  },
+  "Mantik": {
+    "difficulty": "★",
+    "species": "SPAWN",
+    "hive_rank": 6,
+    "allegiance": "Spawn Victory",
+    "power": "Bloodthirst: If you are the only remaining member of The Spawn you may attack twice every round. You fail blood tests."
+  },
+  "Arachus": {
+    "difficulty": "★",
+    "species": "SPAWN",
+    "hive_rank": 10,
+    "allegiance": "Spawn Victory",
+    "power": "Devious Web: You are the only member of the Spawn. The M.O.D. will publicly announce that an Arachus is detected and you learn one out-of-play hidden role. At the start of the game, you must select players to trap in your web. Once per round, if any of these players nominate one another they both die. The size of a web is half the number of players in the game rounded down. You fail blood tests."
+  },
+  "Pupus/Rhodos": {
+    "difficulty": "★★",
+    "species": "SPAWN",
+    "hive_rank": 5,
+    "allegiance": "Spawn Victory",
+    "power": "Metamorphosis: You start the game as a Pupus without a unique power, and after round three, you become a Rhodos. Whoever a Rhodos nominates will die during cryosleep. The nomination does not need to be successful and this ability cannot be shielded against. You fail blood tests."
+  },
+  "Myia": {
+    "difficulty": "★★",
+    "species": "SPAWN",
+    "hive_rank": 7,
+    "allegiance": "Spawn Victory",
+    "power": "Watchful: You may open your eyes during anonymous voting. If you receive the second most votes the Spawn may attack an extra time. You fail blood tests."
+  },
+  "Broodmother": {
+    "difficulty": "★★",
+    "species": "SPAWN",
+    "hive_rank": 8,
+    "allegiance": "Spawn Victory",
+    "power": "Implant: Twice per game, you may implant another player with an egg. They are notified and will remain with their original allegiance for one round. Afterwards, they will become a Broodling, changing allegiance and species. You cannot use this ability consecutively in two rounds. You fail blood tests."
+  },
+  "Broodling": {
+    "difficulty": "★★",
+    "species": "SPAWN",
+    "hive_rank": 0.5,
+    "allegiance": "Spawn Victory",
+    "power": "You fail blood tests."
+  },
+  "The Red Emperor": {
+    "difficulty": "★★★",
+    "species": "SPAWN",
+    "hive_rank": 9,
+    "allegiance": "Spawn Victory",
+    "power": "Dominion: You make other Spawn players Disciple Worms unless the game has more than 15 players. If you choose to attack yourself during cryosleep you must crown a new Emperor and the Spawn may receive an extra attack. Hidden roles receive false information while a Red Emperor is in play. You fail blood tests."
+  },
+  "Disciple Worm": {
+    "difficulty": "★★★",
+    "species": "SPAWN",
+    "allegiance": "Spawn Victory",
+    "power": "Servile: If the Red Emperor would be ejected, you may be ejected in their place. You fail blood tests."
+  },
+  "Zealot": {
+    "difficulty": "★★★",
+    "species": "HUMAN",
+    "allegiance": "After joining the Spawn team you join a Spawn victory.",
+    "power": "When only one of the Spawn is in play you will awake during their cryosleep phase and see them. If the game ends before you awake with the Spawn you lose. You are immune to Spawn attack."
+  },
+  "Xenobiologist": {
+    "difficulty": "★",
+    "species": "HUMAN",
+    "allegiance": "Humanity Victory",
+    "power": "Detect: Every cryosleep you check a player and learn if they are Spawn. You are immune to having your allegiance changed.",
+    "role_type": "Hidden Role"
+  },
+  "Coroner": {
+    "difficulty": "★",
+    "species": "HUMAN",
+    "allegiance": "Humanity Victory",
+    "power": "Autopsy: Each cryosleep after the first round you learn the number of dead Spawn.",
+    "role_type": "Hidden Role"
+  },
+  "Forcefield Operator": {
+    "difficulty": "★",
+    "species": "HUMAN",
+    "allegiance": "Humanity Victory",
+    "power": "Forcefield: Each cryosleep after the first round you may choose a player to be shielded from Spawn attack. Unique Spawn abilities will also fail.",
+    "role_type": "Hidden Role"
+  },
+  "Archivist": {
+    "difficulty": "★",
+    "species": "HUMAN",
+    "allegiance": "Humanity Victory",
+    "power": "Whilst you live dead players will have final logs.",
+    "role_type": "Hidden Role"
+  },
+  "Marine": {
+    "difficulty": "★",
+    "species": "HUMAN",
+    "allegiance": "Humanity Victory",
+    "power": "You are immune to having your allegiance changed and you are immune to Spawn attacks.",
+    "role_type": "Hidden Role"
+  },
+  "Cryptographer": {
+    "difficulty": "★",
+    "species": "HUMAN",
+    "allegiance": "Humanity Victory",
+    "power": "You learn three types of Spawn when you receive your role from the M.O.D. Two are in play.",
+    "role_type": "Hidden Role"
+  },
+  "Hacker": {
+    "difficulty": "★",
+    "species": "HUMAN",
+    "allegiance": "After you survive until round 3 you join a humanity victory.",
+    "power": "Whilst you live the M.O.D. blood test results may be wrong by +1 or -1.",
+    "role_type": "Hidden Role"
+  },
+  "Stowaway": {
+    "difficulty": "★",
+    "species": "HUMAN",
+    "allegiance": "Humanity Victory unless you or another Stowaway is ejected. If another Stowaway is ejected or dies due to systems failure you change allegiance to the Spawn.",
+    "power": "You see any Stowaways in play during cryosleep.",
+    "role_type": "Hidden Role"
+  },
+  "Immune": {
+    "difficulty": "★",
+    "species": "HUMAN",
+    "allegiance": "Humanity Victory",
+    "power": "You are immune to having your allegiance changed. You appear as the Spawn to hidden role abilities. You fail blood tests.",
+    "role_type": "Hidden Role"
+  },
+  "Researcher": {
+    "difficulty": "★★",
+    "species": "HUMAN",
+    "allegiance": "Solo Victory",
+    "power": "Survive until there have been 5 failed blood tests. Once this is accomplished you will leave the ship during cryosleep.",
+    "role_type": "Hidden Role"
+  },
+  "Corporate Spy": {
+    "difficulty": "★★★",
+    "species": "HUMAN",
+    "allegiance": "Solo Victory",
+    "power": "Choose another player to target. Once they are ejected you receive their role and win condition. If your target is attacked by the Spawn you will leave the ship and lose. The M.O.D. will give you the role of your target during cryosleep once they are ejected.",
+    "role_type": "Hidden Role"
+  },
+  "Bounty Hunter": {
+    "difficulty": "★★★",
+    "species": "HUMAN",
+    "allegiance": "Solo Victory",
+    "power": "You win if the highest-ranked position human is ejected. If you win you will leave the ship. If your target is attacked by the Spawn you will leave the ship and lose. You learn the public position of the highest-ranked human when you receive your role from the M.O.D.",
+    "role_type": "Hidden Role"
+  },
+  "Engineer": {
+    "difficulty": "★",
+    "species": "HUMAN",
+    "allegiance": "Humanity Victory",
+    "power": "You learn the number of Androids in play when you receive your role from the M.O.D. If all engineers die systems will fail and a random member of humanity will die every round.",
+    "role_type": "Hidden Role"
+  },
+  "Servo-Bot 5000": {
+    "difficulty": "★",
+    "species": "ANDROID",
+    "allegiance": "Humanity Victory",
+    "power": "You fail blood tests.",
+    "role_type": "Hidden Role"
+  },
+  "Protectitron": {
+    "difficulty": "★",
+    "species": "ANDROID",
+    "allegiance": "Solo Victory",
+    "power": "Choose another player to protect. You win if they survive the game. If they are ejected or Spawn attacked you will die in their place. You fail blood tests.",
+    "role_type": "Hidden Role"
+  },
+  "Recylco-Bot": {
+    "difficulty": "★★",
+    "species": "ANDROID",
+    "allegiance": "Humanity Victory",
+    "power": "You receive one less vote for every dead Android (this cannot go below 1). You fail blood tests.",
+    "role_type": "Hidden Role"
+  },
+  "Scrapper": {
+    "difficulty": "★★",
+    "species": "HUMAN",
+    "allegiance": "Solo Victory",
+    "power": "You win when three or all Androids are ejected or dead. If you are in play there is an extra Android that an Engineer would not be informed of. If you win you will leave the ship. Scrap Check: Every cryosleep you check a player and learn if they are an Android.",
+    "role_type": "Hidden Role"
+  },
+  "Robo-Rights Activist": {
+    "difficulty": "★★★",
+    "species": "ANDROID",
+    "allegiance": "Humanity Victory if the Scrapper loses. If the Scrapper wins then you lose and leave the ship.",
+    "power": "You fail blood tests.",
+    "role_type": "Hidden Role"
+  },
+  "Malware Droid": {
+    "difficulty": "★★★",
+    "species": "ANDROID",
+    "allegiance": "Spawn Victory",
+    "power": "While you are alive all androids can win with the Spawn. You fail blood tests.",
+    "role_type": "Hidden Role"
+  },
+  "Chief Medic": {
+    "difficulty": "★",
+    "species": "HUMAN",
+    "allegiance": "Humanity Victory",
+    "power": "Once per game, you can ask the M.O.D. to publicly conduct a biometric scan. The M.O.D. will announce the number of Spawn and Broodmother eggs currently in play.",
+    "role_type": "Public Position"
+  },
+  "Chief of Security": {
+    "difficulty": "★",
+    "species": "HUMAN",
+    "allegiance": "Humanity Victory",
+    "power": "You require one less supporter for a nomination.",
+    "role_type": "Public Position"
+  },
+  "Chief of Psionics": {
+    "difficulty": "★",
+    "species": "HUMAN",
+    "allegiance": "Humanity Victory",
+    "power": "Once per round, you can privately ask the M.O.D. if any psionic activity was detected. The M.O.D. will inform you if a Psiok used their power last round.",
+    "role_type": "Public Position"
+  },
+  "Chief of Staff": {
+    "difficulty": "★",
+    "species": "HUMAN",
+    "allegiance": "Humanity Victory",
+    "power": "Once per game, you can make two players swap positions.",
+    "role_type": "Public Position"
+  },
+  "Chief of Surveillance": {
+    "difficulty": "★",
+    "species": "HUMAN",
+    "allegiance": "Humanity Victory",
+    "power": "Once per game, you can ask the M.O.D. to publicly announce the surveillance report. The M.O.D. will announce the number of powers used this round during Cryosleep.",
+    "role_type": "Public Position"
+  }
+}
