@@ -50,6 +50,9 @@ current_round = 1
 blood_tests_left = 3  # Number of blood tests available per round
 up_for_blood_test = []
 
+# Votes
+votes = defaultdict(int)  # Track votes for each player
+vote_channels = {}  # Store private channels for each player to vote
 class SpawnBot(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -169,12 +172,66 @@ class SpawnBot(commands.Cog):
     @commands.has_permissions(administrator=True)
     async def newround(self, ctx):
         """Start a new round of nominations."""
-        global current_round, blood_tests_left, up_for_blood_test
+        global current_round, blood_tests_left, up_for_blood_test, votes
         current_round += 1
         blood_tests_left = 3
         up_for_blood_test = []
+        votes = defaultdict(int)
         await ctx.send(f"Round {current_round} has begun! All players are now eligible for nomination again. Blood tests available: {blood_tests_left}")
         logger.info(f"New round {current_round} started. Blood tests available: {blood_tests_left}")
+
+    @commands.command(name='create_vote_channels')
+    @commands.has_permissions(administrator=True)
+    async def create_vote_channels(self, ctx):
+        """Create private voting channels for each member and the moderator."""
+        guild = ctx.guild
+        moderator_role = discord.utils.get(guild.roles, name='Moderator')
+
+        for member in guild.members:
+            if not member.bot:
+                # Create a private channel for each member
+                overwrites = {
+                    guild.default_role: discord.PermissionOverwrite(read_messages=False),
+                    member: discord.PermissionOverwrite(read_messages=True),
+                    moderator_role: discord.PermissionOverwrite(read_messages=True)
+                }
+                channel = await guild.create_text_channel(f'vote-{member.display_name}', overwrites=overwrites)
+                vote_channels[member.id] = channel.id
+                logger.info(f"Created voting channel for {member.display_name}")
+
+    @commands.command(name='vote')
+    async def vote(self, ctx, member: discord.Member):
+        """Vote for a player who has been blood tested."""
+        if ctx.channel.id != vote_channels.get(ctx.author.id):
+            await ctx.send("You can only vote in your private voting channel.")
+            return
+
+        if member.id not in up_for_blood_test:
+            await ctx.send(f"{member.mention} is not eligible for voting this round!")
+            return
+
+        votes[member.id] += 1
+        await ctx.send(f"Your vote for {member.mention} has been recorded.")
+        logger.info(f"{ctx.author.display_name} voted for {member.display_name}")
+
+    @commands.command(name='eject')
+    @commands.has_permissions(administrator=True)
+    async def eject(self, ctx):
+        """Determine if a player should be ejected based on votes."""
+        if not votes:
+            await ctx.send("No votes have been cast this round.")
+            return
+
+        max_votes = max(votes.values())
+        ejected_candidates = [member_id for member_id, count in votes.items() if count == max_votes]
+
+        if len(ejected_candidates) == 1:
+            ejected_member = await bot.fetch_user(ejected_candidates[0])
+            await ctx.send(f"{ejected_member.mention} has been ejected with {max_votes} votes!")
+            logger.info(f"{ejected_member.display_name} has been ejected with {max_votes} votes")
+        else:
+            await ctx.send("No one was ejected due to a tie.")
+            logger.info("No one was ejected due to a tie.")
 
     @commands.command(name='*')
     async def spectate(self, ctx):
@@ -210,6 +267,9 @@ class SpawnBot(commands.Cog):
 `!nextmod` - (Admin only) Activate next moderator
 `!nominate <user>` - Nominate a player for an action
 `!newround` - (Admin only) Start a new round of nominations
+`!create_vote_channels` - (Admin only) Create private voting channels for each player
+`!vote <user>` - Vote for a player who has been blood tested
+`!eject` - (Admin only) Determine if a player should be ejected based on votes
 `!*` - Toggle spectator status
         """
         await ctx.send(help_text)
@@ -223,6 +283,9 @@ async def on_ready():
     logger.info(f'  !nextmod - (Admin only) Activate next moderator')
     logger.info(f'  !nominate <user> - Nominate a player for an action')
     logger.info(f'  !newround - (Admin only) Start a new round of nominations')
+    logger.info(f'  !create_vote_channels - (Admin only) Create private voting channels for each player')
+    logger.info(f'  !vote <user> - Vote for a player who has been blood tested')
+    logger.info(f'  !eject - (Admin only) Determine if a player should be ejected based on votes')
     logger.info(f'  !* - Toggle spectator status')
     await bot.add_cog(SpawnBot(bot))
 
