@@ -1,21 +1,21 @@
 import discord
 from discord.ext import commands, tasks
+from discord.ui import Button, View
 import os
 from dotenv import load_dotenv
 import json
 import asyncio
 from collections import deque, defaultdict
 import logging
+import random
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Bot configuration
-TOKEN = os.getenv('DISCORD_TOKEN')
-# Load environment variables with debug info
-logger.info("Starting bot...")
+# Load environment variables
 load_dotenv()
+logger.info("Starting bot...")
 TOKEN = os.getenv('DISCORD_TOKEN')
 logger.info(f"Token loaded: {'Yes' if TOKEN else 'No'}")
 logger.info(f"Token length: {len(TOKEN) if TOKEN else 0}")
@@ -45,14 +45,19 @@ active_mods = set()
 # Nominations
 nominations = defaultdict(list)  # Keeps track of nominations per round
 nominations_data = {}  # Maps message ID to nominated member ID
+nominations_author = {}  # Maps message ID to the author of the nomination
 supports = defaultdict(lambda: defaultdict(int))  # Keeps track of support counts for nominations
 current_round = 1
 blood_tests_left = 3  # Number of blood tests available per round
 up_for_blood_test = []
 
+# Players and roles
+players_roles = {}  # Maps player ID to their role (public and private)
+signed_up_players = set()  # Set of players who signed up for the game
+
 # Votes
 votes = defaultdict(int)  # Track votes for each player
-vote_channels = {}  # Store private channels for each player to vote
+
 class SpawnBot(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -108,6 +113,50 @@ class SpawnBot(commands.Cog):
         next_mod = await bot.fetch_user(next_mod_id)
         await ctx.send(f"{next_mod.mention} is now the active moderator!")
 
+    @commands.command(name='startgame')
+    async def startgame(self, ctx):
+        """Start a new game. Only allowed by the current moderator."""
+        if not mod_queue or mod_queue[0] != ctx.author.id:
+            await ctx.send("Only the current moderator at the front of the queue can start the game!")
+            return
+
+        view = SignupView()
+        await ctx.send("A new game is starting! Click the button below to sign up:", view=view)
+        logger.info(f"Game signup started by {ctx.author.display_name}")
+
+    @commands.command(name='assignroles')
+    async def assignroles(self, ctx):
+        """Assign roles to all players who signed up. Only allowed by the current moderator."""
+        if not mod_queue or mod_queue[0] != ctx.author.id:
+            await ctx.send("Only the current moderator at the front of the queue can assign roles!")
+            return
+
+        if not signed_up_players:
+            await ctx.send("No players have signed up for the game!")
+            return
+
+        roles_list = list(self.roles_data.keys())
+        random.shuffle(roles_list)
+
+        servo_bot_count = 0
+        for player_id in signed_up_players:
+            if roles_list:
+                assigned_role = roles_list.pop()
+                if assigned_role == "Servo Bot" and servo_bot_count < 4:
+                    servo_bot_count += 1
+                elif assigned_role == "Servo Bot" and servo_bot_count >= 4:
+                    assigned_role = roles_list.pop() if roles_list else "Villager"
+            else:
+                assigned_role = "Villager"
+            players_roles[player_id] = assigned_role
+            player_user = await bot.fetch_user(player_id)
+            await player_user.send(f"You have been assigned the role: {assigned_role}")
+            logger.info(f"Assigned role {assigned_role} to {player_user.display_name}")
+
+        await ctx.send("Roles have been assigned to all players!")
+        logger.info("Roles have been assigned to all signed-up players.")
+        signed_up_players.clear()
+
     @commands.command(name='nominate')
     async def nominate(self, ctx, member: discord.Member):
         """Nominate a player for an action."""
@@ -124,6 +173,7 @@ class SpawnBot(commands.Cog):
 
         # Add message ID and nominated member to the nominations data
         nominations_data[nomination_message.id] = member.id
+        nominations_author[nomination_message.id] = ctx.author.id
 
         # Add thumbs up reaction to the message
         await nomination_message.add_reaction('👍')
@@ -148,7 +198,8 @@ class SpawnBot(commands.Cog):
                 return
 
             nominated_id = nominations_data[message_id]
-            if user.id == message.mentions[0].id:
+            nominator_id = nominations_author[message_id]
+            if user.id == nominator_id:
                 await channel.send(f"{user.mention}, you cannot support your own nomination!")
                 return
 
@@ -164,55 +215,64 @@ class SpawnBot(commands.Cog):
                     nominated_user = await bot.fetch_user(nominated_id)
                     await channel.send(f"Nomination successful! {nominated_user.mention} is up for a blood test. Blood tests remaining: {blood_tests_left}")
                     logger.info(f"Nomination successful for {nominated_user.name}. Blood tests remaining: {blood_tests_left}")
-                else:
-                    await channel.send(f"No blood tests remaining this round!")
-                    logger.info("No blood tests remaining this round!")
+                if blood_tests_left == 0:
+                    await channel.send("Processing blood test results...")
+                    logger.info("Processing blood test results...")
+                    await self.process_blood_test_results(channel)
 
-    @commands.command(name='newround')
-    @commands.has_permissions(administrator=True)
-    async def newround(self, ctx):
-        """Start a new round of nominations."""
-        global current_round, blood_tests_left, up_for_blood_test, votes
-        current_round += 1
-        blood_tests_left = 3
+    async def process_blood_test_results(self, channel):
+        global current_round, up_for_blood_test
+        senior_analyst_role = "Senior Analyst"
+        hacker_role = "Hacker"
+        senior_analyst = None
+        hacker_alive = False
+
+        # Find if there is a Senior Analyst and a Hacker in play
+        for player_id, role in players_roles.items():
+            if role == senior_analyst_role:
+                senior_analyst = player_id
+            if role == hacker_role:
+                hacker_alive = True
+
+        # Determine the number of fails
+        fail_count = sum(1 for player_id in up_for_blood_test if players_roles[player_id] in ["Bounty Hunter", "Malware Droid"])
+
+        # If a hacker is alive, randomly adjust the fail count
+        if hacker_alive:
+            adjustment = random.choice([-1, 0, 1])
+            fail_count = max(0, fail_count + adjustment)
+
+        # Send results to the moderator
+        moderator_id = mod_queue[0] if mod_queue else None
+        if moderator_id:
+            moderator = await bot.fetch_user(moderator_id)
+            original_fail_count = sum(1 for player_id in up_for_blood_test if players_roles[player_id] in ["Bounty Hunter", "Malware Droid"])
+            results_message = f"Blood test results for this round:\nOriginal Fail Count: {original_fail_count}\nAdjusted Fail Count (due to Hacker influence): {fail_count}\n"
+            for player_id in up_for_blood_test:
+                user = await bot.fetch_user(player_id)
+                results_message += f"- {user.display_name}: {players_roles[player_id]}\n"
+            await moderator.send(results_message)
+            logger.info(f"Sent blood test results to moderator: {moderator.display_name}")
+
+        # Send fail count to the channel
+        await channel.send(f"Blood test results: {fail_count} fail(s) detected.")
+        logger.info(f"Sent blood test results to channel: {fail_count} fail(s) detected.")
+
+        # Reset blood tests for the next round
         up_for_blood_test = []
-        votes = defaultdict(int)
-        await ctx.send(f"Round {current_round} has begun! All players are now eligible for nomination again. Blood tests available: {blood_tests_left}")
-        logger.info(f"New round {current_round} started. Blood tests available: {blood_tests_left}")
-
-    @commands.command(name='create_vote_channels')
-    @commands.has_permissions(administrator=True)
-    async def create_vote_channels(self, ctx):
-        """Create private voting channels for each member and the moderator."""
-        guild = ctx.guild
-        moderator_role = discord.utils.get(guild.roles, name='Moderator')
-
-        for member in guild.members:
-            if not member.bot:
-                # Create a private channel for each member
-                overwrites = {
-                    guild.default_role: discord.PermissionOverwrite(read_messages=False),
-                    member: discord.PermissionOverwrite(read_messages=True),
-                    moderator_role: discord.PermissionOverwrite(read_messages=True)
-                }
-                channel = await guild.create_text_channel(f'vote-{member.display_name}', overwrites=overwrites)
-                vote_channels[member.id] = channel.id
-                logger.info(f"Created voting channel for {member.display_name}")
 
     @commands.command(name='vote')
-    async def vote(self, ctx, member: discord.Member):
-        """Vote for a player who has been blood tested."""
-        if ctx.channel.id != vote_channels.get(ctx.author.id):
-            await ctx.send("You can only vote in your private voting channel.")
+    async def vote(self, ctx):
+        """Vote for a player who has been blood tested via DM."""
+        if not up_for_blood_test:
+            await ctx.send("No players are currently up for a blood test.")
             return
 
-        if member.id not in up_for_blood_test:
-            await ctx.send(f"{member.mention} is not eligible for voting this round!")
-            return
-
-        votes[member.id] += 1
-        await ctx.send(f"Your vote for {member.mention} has been recorded.")
-        logger.info(f"{ctx.author.display_name} voted for {member.display_name}")
+        # Send a DM to the user with buttons to vote
+        user = ctx.author
+        view = VoteView(up_for_blood_test, user)
+        await user.send("Please cast your vote for one of the players up for a blood test:", view=view)
+        await ctx.send(f"{user.mention}, check your DMs to cast your vote.")
 
     @commands.command(name='eject')
     @commands.has_permissions(administrator=True)
@@ -233,60 +293,62 @@ class SpawnBot(commands.Cog):
             await ctx.send("No one was ejected due to a tie.")
             logger.info("No one was ejected due to a tie.")
 
-    @commands.command(name='*')
-    async def spectate(self, ctx):
-        """Toggle spectator status for a user"""
-        member = ctx.author
-        try:
-            if member.display_name.startswith('[S]'):
-                # Remove spectator status
-                new_name = member.display_name[4:]
-                await member.edit(nick=new_name)
-                await ctx.send(f"{member.mention} is no longer spectating.")
-                logger.info(f"{member.display_name} is no longer spectating.")
-            else:
-                # Add spectator status
-                new_name = f"[S] {member.display_name}"
-                await member.edit(nick=new_name)
-                await ctx.send(f"{member.mention} is now spectating.")
-                logger.info(f"{member.display_name} is now spectating.")
-        except discord.Forbidden:
-            await ctx.send("I don't have permission to change nicknames!")
-            logger.error(f"Forbidden error: Could not change nickname for {member.display_name}. Check role hierarchy and permissions.")
-        except Exception as e:
-            await ctx.send("An unexpected error occurred.")
-            logger.error(f"Unexpected error: {str(e)}")
+    @commands.command(name='newround')
+    @commands.has_permissions(administrator=True)
+    async def newround(self, ctx):
+        """Start a new round of nominations."""
+        global current_round, blood_tests_left, up_for_blood_test, votes
+        current_round += 1
+        blood_tests_left = 3
+        up_for_blood_test = []
+        votes = defaultdict(int)
+        await ctx.send(f"Round {current_round} has begun! All players are now eligible for nomination again. Blood tests available: {blood_tests_left}")
+        logger.info(f"New round {current_round} started. Blood tests available: {blood_tests_left}")
 
-    @commands.command(name='spawn_help')
-    async def help_command(self, ctx):
-        """Show available commands"""
-        help_text = """
-**Spawn Game Bot Commands**
-`!search <keyword>` - Search for roles or terms
-`!modqueue` - Join the moderator queue
-`!nextmod` - (Admin only) Activate next moderator
-`!nominate <user>` - Nominate a player for an action
-`!newround` - (Admin only) Start a new round of nominations
-`!create_vote_channels` - (Admin only) Create private voting channels for each player
-`!vote <user>` - Vote for a player who has been blood tested
-`!eject` - (Admin only) Determine if a player should be ejected based on votes
-`!*` - Toggle spectator status
-        """
-        await ctx.send(help_text)
+class SignupView(View):
+    def __init__(self):
+        super().__init__(timeout=60)
+        self.add_item(SignupButton())
+
+class SignupButton(Button):
+    def __init__(self):
+        super().__init__(label="Sign Up", style=discord.ButtonStyle.success)
+
+    async def callback(self, interaction: discord.Interaction):
+        user = interaction.user
+        if user.id in signed_up_players:
+            await interaction.response.send_message("You are already signed up for the game.", ephemeral=True)
+        else:
+            signed_up_players.add(user.id)
+            await interaction.response.send_message("You have successfully signed up for the game!", ephemeral=True)
+            logger.info(f"{user.display_name} signed up for the game.")
+
+class VoteView(View):
+    def __init__(self, candidates, voter):
+        super().__init__(timeout=60)
+        self.candidates = candidates
+        self.voter = voter
+        for candidate_id in candidates:
+            self.add_item(VoteButton(candidate_id))
+
+class VoteButton(Button):
+    def __init__(self, candidate_id):
+        self.candidate_id = candidate_id
+        super().__init__(label=f"Vote for {candidate_id}", style=discord.ButtonStyle.primary)
+
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user != self.view.voter:
+            await interaction.response.send_message("You cannot vote on behalf of someone else.", ephemeral=True)
+            return
+
+        votes[self.candidate_id] += 1
+        await interaction.response.send_message(f"You have successfully voted for <@{self.candidate_id}>.", ephemeral=True)
+        logger.info(f"{interaction.user.display_name} voted for {self.candidate_id}")
+        self.view.stop()
 
 @bot.event
 async def on_ready():
     logger.info(f'✅ {bot.user} has connected to Discord!')
-    logger.info(f'Bot is ready to use with the following commands:')
-    logger.info(f'  !search <keyword> - Search for roles or terms')
-    logger.info(f'  !modqueue - Join the moderator queue')
-    logger.info(f'  !nextmod - (Admin only) Activate next moderator')
-    logger.info(f'  !nominate <user> - Nominate a player for an action')
-    logger.info(f'  !newround - (Admin only) Start a new round of nominations')
-    logger.info(f'  !create_vote_channels - (Admin only) Create private voting channels for each player')
-    logger.info(f'  !vote <user> - Vote for a player who has been blood tested')
-    logger.info(f'  !eject - (Admin only) Determine if a player should be ejected based on votes')
-    logger.info(f'  !* - Toggle spectator status')
     await bot.add_cog(SpawnBot(bot))
 
 # Run the bot with error handling
@@ -296,9 +358,5 @@ if __name__ == "__main__":
         bot.run(TOKEN)
     except discord.LoginFailure as e:
         logger.error(f"❌ Login Failed! Error: {str(e)}")
-        logger.error("Common causes:")
-        logger.error("1. Token might be invalid or expired")
-        logger.error("2. .env file might not be in the correct location")
-        logger.error("3. .env file might have extra spaces or quotes")
     except Exception as e:
         logger.error(f"❌ An error occurred: {str(e)}")
