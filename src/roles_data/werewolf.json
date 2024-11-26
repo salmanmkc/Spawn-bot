@@ -1,0 +1,110 @@
+{
+    "Alpha Wolf": {
+        "name": "Alpha Wolf",
+        "faction": "Wolf Pack",
+        "emoji": "\ud83d\udc3a",
+        "corrupted": true
+    },
+    "Pack Wolf": {
+        "name": "Pack Wolf",
+        "faction": "Wolf Pack",
+        "emoji": "\ud83d\udc3a",
+        "corrupted": true
+    },
+    "Wolf Pup": {
+        "name": "Wolf Pup",
+        "faction": "Wolf Pack",
+        "emoji": "\ud83d\udc3a\ud83d\udc15",
+        "corrupted": true
+    },
+    "Defector": {
+        "name": "Defector",
+        "faction": "Wolf Pack",
+        "emoji": "\ud83d\udd04"
+    },
+    "WFarmer": {
+        "name": "Farmer",
+        "secret_role": "Wolf Farmer",
+        "faction": "Village",
+        "emoji": "\ud83e\uddd1\u200d\ud83c\udf3e",
+        "secret_emoji": "\ud83d\udc3a\ud83e\uddd1\u200d\ud83c\udf3e"
+    },
+    "HFarmer": {
+        "name": "Farmer",
+        "secret_role": "Hero Farmer",
+        "faction": "Village",
+        "emoji": "\ud83e\uddd1\u200d\ud83c\udf3e",
+        "secret_emoji": "💪🧑‍🌾"
+    },
+    "Clairvoyant": {
+        "name": "Clairvoyant",
+        "faction": "Village",
+        "mystic": true,
+        "emoji": "\ud83d\udd2e"
+    },
+    "Witch": {
+        "name": "Witch",
+        "faction": "Village",
+        "mystic": true,
+        "emoji": "\ud83e\uddd9\u200d\u2640\ufe0f"
+    },
+    "Medium": {
+        "name": "Medium",
+        "faction": "Village",
+        "mystic": true,
+        "emoji": "\ud83d\udc7b"
+    },
+    "Healer": {
+        "name": "Healer",
+        "faction": "Village",
+        "mystic": true,
+        "emoji": "\ud83d\udc96"
+    },
+    "Bard": {
+        "name": "Bard",
+        "faction": "Village",
+        "emoji": "\ud83c\udfa4"
+    },
+    "Innkeeper": {
+        "name": "Innkeeper",
+        "faction": "Village",
+        "emoji": "\ud83c\udf7b"
+    },
+    "Hermit": {
+        "name": "Hermit",
+        "faction": "Village",
+        "emoji": "\ud83c\udfe0"
+    },
+    "Monk": {
+        "name": "Monk",
+        "faction": "Village",
+        "emoji": "\ud83d\ude4f"
+    },
+    "Priest": {
+        "name": "Priest",
+        "faction": "Village",
+        "emoji": "\u271d\ufe0f"
+    },
+    "Sinner ": {
+        "name": "Sinner ",
+        "faction": "Village",
+        "corrupted": true,
+        "emoji": "\ud83d\ude08"
+    },
+    "Seducer": {
+        "name": "Seducer",
+        "faction": "Village",
+        "corrupted": true,
+        "emoji": "\ud83d\udc8b"
+    },
+    "Madman": {
+        "name": "Madman",
+        "faction": "Third Party",
+        "emoji": "\ud83c\udf00"
+    },
+    "Jester": {
+        "name": "Jester",
+        "faction": "Third Party",
+        "emoji": "\ud83c\udfad"
+    }
+}
