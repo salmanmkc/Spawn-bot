@@ -1,4 +1,5 @@
-from roles import ROLES, roles_to_verbose
+from roles import load_roles
+from polls import intialize_vote
 from discord.ui import Button, View, Select
 from discord import SelectOption
 import discord
@@ -16,7 +17,7 @@ async def intialize_game(
         data={},
     ):
     game_id = uuid.uuid1()
-    roles = ROLES
+    roles = load_roles('werewolf')
     
     user = interaction.user
     GAMES[game_id] = {
@@ -36,43 +37,7 @@ async def intialize_game(
     #if image:
     #    embed.set_image()
     await interaction.response.send_message(view=view, embed=embed)
-
-class JoinButton(Button):
-    def __init__(self, label, game_id):
-        self.game_id = game_id
-        super().__init__(label=label, style=discord.ButtonStyle.success)
-
-    async def callback(self, interaction: discord.Interaction):
-        user = interaction.user
-        if user.id in GAMES[self.game_id]['players']:
-            await interaction.response.send_message("You already joined the game", ephemeral=True)
-            return
-        if GAMES[self.game_id]['stage'] != 'players_join':
-            await interaction.response.send_message("The game already started", ephemeral=True)
-            return
-        GAMES[self.game_id]['players'][user.id] = {
-            'username': user.display_name,
-            'role': None,
-            'is_alive': True
-        }
-        await interaction.response.send_message("You Joined the game!", ephemeral=True)
-
-class LeaveButton(Button):
-    def __init__(self, label, game_id):
-        self.game_id = game_id
-        super().__init__(label=label, style=discord.ButtonStyle.red)
-
-    async def callback(self, interaction: discord.Interaction):
-        user = interaction.user
-        if user.id not in GAMES[self.game_id]['players']:
-            await interaction.response.send_message("You are not in the game", ephemeral=True)
-            return
-        if GAMES[self.game_id]['stage'] != 'players_join':
-            await interaction.response.send_message("The game already started, ask for a mod kill", ephemeral=True)
-            return
-        GAMES[self.game_id]['players'].pop(user.id, None)
-        await interaction.response.send_message("You left the game", ephemeral=True)
-
+    
 
 class GameSelect(Select):
 
@@ -107,6 +72,11 @@ class GameStartView(View):
             'is_alive': True
         }
         
+        # notify moderators
+        for moderator_id in GAMES[self.game_id]['moderators']:
+            moderator = await interaction.client.fetch_user(moderator_id)
+            await moderator.send(f"{user.display_name} joined the game, {len(GAMES[self.game_id]['players'])} players")
+        
         await interaction.response.send_message("You Joined the game!", ephemeral=True)
 
     @discord.ui.button(label="Leave", style=discord.ButtonStyle.red)
@@ -120,6 +90,11 @@ class GameStartView(View):
             return
         GAMES[self.game_id]['players'].pop(user.id, None)
         await interaction.response.send_message("You left the game", ephemeral=True)
+        
+        # notify moderators
+        for moderator_id in GAMES[self.game_id]['moderators']:
+            moderator = await interaction.client.fetch_user(moderator_id)
+            await moderator.send(f"{user.display_name} left the game, {len(GAMES[self.game_id]['players'])} players")
     
     
     @discord.ui.button(label="Join as mod", style=discord.ButtonStyle.secondary, row=2)
@@ -134,6 +109,12 @@ class GameStartView(View):
         if GAMES[self.game_id]['stage'] != 'players_join':
             await interaction.response.send_message("The game already started", ephemeral=True)
             return
+        
+        # notify moderators
+        for moderator_id in GAMES[self.game_id]['moderators']:
+            moderator = await interaction.client.fetch_user(moderator_id)
+            await moderator.send(f"{user.display_name} joined the game as mod, {len(GAMES[self.game_id]['players'])} players")
+        
         GAMES[self.game_id]['moderators'][user.id] = {
             'username': user.display_name,
         }
@@ -147,24 +128,37 @@ class GameStartView(View):
 
 class GameSetupView(View):
     def __init__(self, game_id, data={}):
+        self.selected_roles = []
         self.game_id = game_id
         self.data = data
         
         super().__init__()
         
-        players = GAMES[self.game_id]['players']
-        if len(players) != 0:
+        roles = GAMES[self.game_id]['initial_roles']
+        if len(roles) != 0:
             options = [
-                SelectOption(label=players[player_id]['username'], value=player_id)
-                for player_id in players
+                SelectOption(label=roles[role_key]['name'], value=role_key)
+                for role_key in roles
             ]
-            user_select = Select(placeholder="Select an user", min_values=1, options=options) # 
-            self.add_item(user_select)
+            self.role_select = Select(placeholder="Select roles for the game", min_values=1, max_values=len(options), options=options) # 
+            self.role_select.callback = self.role_select_callback
+            self.add_item(self.role_select)
+        
+    async def role_select_callback(self, interaction: discord.Interaction):
+        self.selected_roles = []
+        for value in self.role_select.values:
+            role = GAMES[self.game_id]['initial_roles'][value]
+            self.selected_roles.append(
+                role
+            )
+        await interaction.response.send_message(
+            f"Roles at play updated", ephemeral=True
+        )
     
-    @discord.ui.button(label="Randomly distribute roles", style=discord.ButtonStyle.success)
+    @discord.ui.button(label="Randomly distribute roles", style=discord.ButtonStyle.success, row=2)
     async def randomly_distribute_roles(self, interaction: discord.Interaction, button: discord.ui.Button):
         import random
-        roles = GAMES[self.game_id]['initial_roles']
+        roles = self.selected_roles
         players = GAMES[self.game_id]['players']
         if len(players) > len(roles):
             await interaction.response.send_message(f"Not enough roles for this amount of users: {len(players)}/{len(roles)}", ephemeral=True)
@@ -214,11 +208,16 @@ class GameSetupView(View):
             name="Moding", 
             value=mod_list_verbose
         )
+        
+        # Game started and button is disabled
         button.disabled = True
+        channel = interaction.client.get_channel(GAMES[self.game_id]['channel_id'])
         await interaction.response.edit_message(view=self)
-        await interaction.followup.send(
-            embed=embed,
-        )
+        
+        await channel.send(embed=embed)
+        #await interaction.followup.send(
+        #    embed=embed,
+        #)
         
         # message mods the control panel
         for moderator_id in GAMES[self.game_id]['moderators']:
@@ -228,25 +227,49 @@ class GameSetupView(View):
                 title=f"{GAMES[self.game_id]['name']} mod panel",
             )
             await user.send(view=ModPanelView(self.game_id), embed=embed)
-    
+
+        for player_id in GAMES[self.game_id]['players']:
+            player = GAMES[self.game_id]['players'][player_id]
+            user = await interaction.client.fetch_user(player_id)
+            if player['role']:
+                await user.send(f"The game started and you are... {player['role']['name']} {player['role']['emoji']}")
+
 class ModPanelView(View):
     # sent via dm
     def __init__(self, game_id, data={}):
+        self.selected_users = []
         self.game_id = game_id
         self.data = data
         
         super().__init__()
+        
+        players = GAMES[self.game_id]['players']
+        if len(players) != 0:
+            options = [
+                SelectOption(label=players[player_id]['username'], value=player_id)
+                for player_id in players
+            ]
+            self.user_select = Select(placeholder="Select users for the ballot", min_values=1, max_values=len(options), options=options) # 
+            self.user_select.callback = self.user_select_callback
+            self.add_item(self.user_select)
     
-    @discord.ui.button(label="Start Nominations", style=discord.ButtonStyle.primary)
-    async def start_nominations(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if GAMES[self.game_id]['stage'] != 'running':
-            await interaction.response.send_message("The game has not started", ephemeral=True)
-            return
-        await interaction.response.send_message("You started nominations", ephemeral=True)
+    async def user_select_callback(self, interaction: discord.Interaction):
+        self.selected_users = []
+        for value in self.user_select.values:
+            player = GAMES[self.game_id]['players'][int(value)]
+            self.selected_users.append(
+                (player['username'], value)
+            )
+        await interaction.response.send_message(
+            f"Ballot updated", ephemeral=True
+        )
+    
+    # @discord.ui.button(label="Start Nominations", style=discord.ButtonStyle.primary)
+    # async def start_nominations(self, interaction: discord.Interaction, button: discord.ui.Button):
+    #    await interaction.response.send_message("You started nominations", ephemeral=True)
     
     @discord.ui.button(label="Start Vote", style=discord.ButtonStyle.primary)
     async def start_vote(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if GAMES[self.game_id]['stage'] != 'running':
-            await interaction.response.send_message("The game has not started", ephemeral=True)
-            return
-        await interaction.response.send_message("You started votes", ephemeral=True)
+        channel = interaction.client.get_channel(GAMES[self.game_id]['channel_id'])
+        await intialize_vote(interaction, channel, options=self.selected_users, notify_to=GAMES[self.game_id]['moderators'])
+        await interaction.response.send_message("You started a vote", ephemeral=True)
