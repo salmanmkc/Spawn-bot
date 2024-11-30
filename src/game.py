@@ -1,6 +1,6 @@
 from roles import load_roles
 from polls import intialize_vote
-from discord.ui import Button, View, Select
+from discord.ui import Button, View, Select, UserSelect
 from discord import SelectOption
 import discord
 import uuid
@@ -55,7 +55,7 @@ async def intialize_game(
     #    embed.set_image()
     await interaction.response.send_message(view=view, embed=embed)
 
-def initializer_player(game_id, user):
+def initialize_player(game_id, user):
     GAMES[game_id]['players'][user.id] = {
         'username': user.display_name,
         'role': None,
@@ -86,6 +86,24 @@ class GameStartView(View):
         self.data = data
         self.update_user_dashboard = update_user_dashboard
         super().__init__()
+        
+        self.user_select = UserSelect(placeholder="Add users", min_values=1, max_values=10, disabled=False) # 
+        self.user_select.callback = self.user_select_callback
+        self.add_item(self.user_select)
+    
+    async def user_select_callback(self, interaction: discord.Interaction):
+        if interaction.user.id not in GAMES[self.game_id]['moderators']:
+            await interaction.response.send_message(
+                f"Only mods can add users", ephemeral=True
+            )
+            return
+        self.selected_users = []
+        for user in self.user_select.values:
+            initialize_player(self.game_id, user)
+        await self.update_user_dashboard(interaction, self.game_id)
+        await interaction.followup.send(
+            f"Added user(s) to game", ephemeral=True
+        )
     
     @discord.ui.button(label="Join!", style=discord.ButtonStyle.success)
     async def join(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -97,7 +115,7 @@ class GameStartView(View):
             await interaction.response.send_message("The game already started", ephemeral=True)
             return
         
-        initializer_player(self.game_id, user)
+        initialize_player(self.game_id, user)
         
         # do not notify moderators
         if False:
@@ -290,6 +308,7 @@ class ModPanelView(View):
     # sent via dm
     def __init__(self, game_id, data={}):
         self.selected_users = []
+        self.night_action_selects = {}
         self.game_id = game_id
         self.data = data
         
@@ -351,6 +370,7 @@ class ModPanelView(View):
         day_number = GAMES[self.game_id]['day_number']
         total_players = GAMES[self.game_id]['players']
         alive_players = {p_id:total_players[p_id] for p_id in total_players if total_players[p_id]['is_alive']}
+        self.night_action_selects = {}
         
         for player_id in alive_players:
             player_data = GAMES[self.game_id]['players'][player_id]
@@ -371,24 +391,29 @@ class ModPanelView(View):
                     selections = {p_id:total_players[p_id] for p_id in total_players if total_players[p_id]['death_at_day'] != day_number - 1}
                 elif night_action_on == 'alive':
                     selections = alive_players
-                elif night_action_on == 'other alive':
+                elif night_action_on == 'others alive':
                     selections = {p_id:total_players[p_id] for p_id in total_players if p_id != player_id}
-            if len(selections) != 0:
-                options = [
-                    SelectOption(label=selections[role_key]['username'], value=role_key)
-                    for role_key in selections
-                ]
-                night_action_select = Select(placeholder=f"Select player to {night_action}", min_values=1, max_values=1, options=options) #
-                async def night_action_select_callback(interaction: discord.Interaction):
-                    return await self.role_night_action_select_callback(interaction, role, night_action_select)
-                night_action_select.callback = night_action_select_callback
-                view = View()
-                view.add_item(night_action_select)
-                await user.send(f"action for night {day_number} {role['emoji']}", view=view)
+            if len(selections) == 0:
+                return
+            options = [
+                SelectOption(label=selections[role_key]['username'], value=role_key)
+                for role_key in selections
+            ]
+            night_action_select = Select(placeholder=f"Select player to {night_action}", min_values=1, max_values=1, options=options) #
+            
+            night_action_select.callback = self.role_night_action_select_callback
+            self.night_action_selects[player_id] = night_action_select
+            
+            view = View()
+            view.add_item(night_action_select)
+            await user.send(f"action for night {day_number} {role['emoji']}", view=view)
     
-    async def role_night_action_select_callback(self, interaction: discord.Interaction, role, night_action_select):
+    async def role_night_action_select_callback(self, interaction: discord.Interaction):
+        player_data = GAMES[self.game_id]['players'][interaction.user.id]
+        role = player_data['role']
+        night_action_select = self.night_action_selects[interaction.user.id]
         day_number = GAMES[self.game_id]['day_number']
-        night_order = role.get('night_order')
+        night_order = role['night_order']
         
         # clean selection
         selections = []
@@ -411,7 +436,11 @@ class ModPanelView(View):
             'selections': selections
         }
         
-        await notify_moderators(self.game_id, interaction, f"{interaction.user.display_name} {role['name']} {role['emoji']} selected {verbose_selections} for {role['night_action']}")
+        await notify_moderators(
+            self.game_id,
+            interaction,
+            f"{interaction.user.display_name} {role['name']} {role['emoji']} selected {verbose_selections} to get {role['night_action']} tonight"
+        )
         
         await interaction.response.send_message(
             f"Selection updated", ephemeral=True
