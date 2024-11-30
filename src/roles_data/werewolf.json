@@ -111,6 +111,7 @@
     "Hermit": {
         "name": "Hermit",
         "faction": "Village",
+        "night_action": "self protect from shadow attacks",
         "emoji": "\ud83c\udfe0"
     },
     "Monk": {

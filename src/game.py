@@ -57,6 +57,7 @@ async def intialize_game(
 
 def initialize_player(game_id, user):
     GAMES[game_id]['players'][user.id] = {
+        'id': user.id,
         'username': user.display_name,
         'role': None,
         'is_alive': True,
@@ -189,7 +190,7 @@ class GameSetupView(View):
         roles = GAMES[self.game_id]['initial_roles']
         if len(roles) != 0:
             options = [
-                SelectOption(label=roles[role_key]['name'], value=role_key)
+                SelectOption(label=f"{roles[role_key]['name']} {roles[role_key]['emoji']}", value=role_key)
                 for role_key in roles
             ]
             self.role_select = Select(placeholder="Select roles for the game", min_values=1, max_values=len(options), options=options) # 
@@ -439,7 +440,7 @@ class ModPanelView(View):
         await notify_moderators(
             self.game_id,
             interaction,
-            f"{interaction.user.display_name} {role['name']} {role['emoji']} selected {verbose_selections} to get {role['night_action']} tonight"
+            f"**{interaction.user.display_name}** {role['name']} {role['emoji']} selected **{verbose_selections}** to get *{role['night_action']}* tonight"
         )
         
         await interaction.response.send_message(
@@ -459,4 +460,58 @@ class ModPanelView(View):
         await interaction.response.edit_message(view=self)
         
         await interaction.followup.send("You started Day phase", ephemeral=True)
+        await self.night_calculations(channel)
+    
+    async def night_calculations(self, channel):
+        day_number = GAMES[self.game_id]['day_number']
+        total_players = GAMES[self.game_id]['players']
+        night_actions = GAMES[self.game_id]['night_actions'][day_number]
+        # cv checks
+        is_cv_alive = False
+        is_cv_check_corrupt = False
+        death_attempts = []
+        protection = []
+        
+        for p_id in total_players:
+            if not total_players[p_id]['is_alive']:
+                continue
+            role = total_players[p_id]['role']
+            if role.get('night_action') in ['kill']:
+                night_action = night_actions.get(role['night_order'])
+                if night_action:
+                    death_attempts = night_action['selections']
+            if role.get('night_action') in ['protect from shadow attacks']:
+                night_action = night_actions.get(role['night_order'])
+                if night_action:
+                    protection = protection.append(night_action['selections'])
+            if role['name'] in ['Clairvoyant']:
+                is_cv_alive = True
+                night_action = night_actions.get(role['night_order'])
+                for selection in night_action['selections']:
+                    is_cv_check_corrupt = selection['role'].get('corrupted', False)
+        # deaths
+        deaths = []
+        for death_player in death_attempts:
+            death_confirmed = True
+            for protected_player in protection:
+                if death_player['id'] == protected_player['id']:
+                    death_confirmed = False
+            if death_player.get('night_action') == 'self protect from shadow attacks':
+                death_confirmed = False
+            if not death_confirmed:
+                continue
+            GAMES[self.game_id]['players'][p_id]['is_alive'] = False
+            GAMES[self.game_id]['players'][p_id]['death_at_day'] = day_number
+            deaths.append(death_player['username'])
+        await channel.send(f"{' and '.join(deaths)} {'were' if len(deaths) > 0 else 'was'} killed during the night")
+            
+        # news
+        for p_id in total_players:
+            if not total_players[p_id]['is_alive']:
+                continue
+            if is_cv_alive:
+                if not is_cv_check_corrupt and total_players[p_id]['role']['name'] in ['Bard']:
+                    await channel.send("A non corrupt person was found yesterday")
+                if is_cv_check_corrupt and total_players[p_id]['role']['name'] in ['Innkeeper']:
+                    await channel.send("A corrupt person was found yesterday")
     
