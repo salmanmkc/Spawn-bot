@@ -3,24 +3,86 @@
         "name": "Alpha Wolf",
         "faction": "Wolf Pack",
         "emoji": "\ud83d\udc3a",
-        "corrupted": true
+        "corrupted": true,
+        "description": "kill",
+        "night_action": "kill",
+        "night_action_on": "alive",
+        "night_order": 19
     },
     "Pack Wolf": {
         "name": "Pack Wolf",
         "faction": "Wolf Pack",
         "emoji": "\ud83d\udc3a",
-        "corrupted": true
+        "corrupted": true,
+        "description": "kill",
+        "night_action": "kill",
+        "night_action_on": "alive",
+        "night_order": 18
     },
     "Wolf Pup": {
         "name": "Wolf Pup",
         "faction": "Wolf Pack",
         "emoji": "\ud83d\udc3a\ud83d\udc15",
-        "corrupted": true
+        "corrupted": true,
+        "description": "kill",
+        "night_action": "kill",
+        "night_action_on": "alive",
+        "night_order": 17
     },
     "Defector": {
         "name": "Defector",
         "faction": "Wolf Pack",
         "emoji": "\ud83d\udd04"
+    },
+    "Clairvoyant": {
+        "name": "Clairvoyant",
+        "faction": "Village",
+        "mystic": true,
+        "emoji": "\ud83d\udd2e",
+        "description": "check corruption",
+        "night_action": "check corruption",
+        "night_action_on": "alive",
+        "night_order": 1
+    },
+    "Wizzard": {
+        "name": "Wizzard",
+        "faction": "Village",
+        "mystic": true,
+        "emoji": ":man_mage:",
+        "description": "check mysticism",
+        "night_action": "check mysticism",
+        "night_action_on": "alive",
+        "night_order": 2
+    },
+    "Witch": {
+        "name": "Witch",
+        "faction": "Village",
+        "mystic": true,
+        "emoji": "\ud83e\uddd9\u200d\u2640\ufe0f",
+        "description": "protect from shadow attacks",
+        "night_action": "protect from shadow attacks",
+        "night_action_on": "others alive",
+        "night_order": 3
+    },
+    "Medium": {
+        "name": "Medium",
+        "faction": "Village",
+        "mystic": true,
+        "emoji": "\ud83d\udc7b",
+        "description": "check last deaths corruption",
+        "night_action": "check for corruption",
+        "night_action_on": "last deaths",
+        "night_order": 4
+    },
+    "Healer": {
+        "name": "Healer",
+        "faction": "Village",
+        "mystic": true,
+        "emoji": "\ud83d\udc96",
+        "description": "heal one night death",
+        "night_action": "heal",
+        "night_action_on": "night deaths",
+        "night_order": 20
     },
     "WFarmer": {
         "name": "Farmer",
@@ -35,30 +97,6 @@
         "faction": "Village",
         "emoji": "\ud83e\uddd1\u200d\ud83c\udf3e",
         "secret_emoji": "💪🧑‍🌾"
-    },
-    "Clairvoyant": {
-        "name": "Clairvoyant",
-        "faction": "Village",
-        "mystic": true,
-        "emoji": "\ud83d\udd2e"
-    },
-    "Witch": {
-        "name": "Witch",
-        "faction": "Village",
-        "mystic": true,
-        "emoji": "\ud83e\uddd9\u200d\u2640\ufe0f"
-    },
-    "Medium": {
-        "name": "Medium",
-        "faction": "Village",
-        "mystic": true,
-        "emoji": "\ud83d\udc7b"
-    },
-    "Healer": {
-        "name": "Healer",
-        "faction": "Village",
-        "mystic": true,
-        "emoji": "\ud83d\udc96"
     },
     "Bard": {
         "name": "Bard",
