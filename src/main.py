@@ -25,11 +25,13 @@ logging.getLogger('discord.http').setLevel(logging.INFO)
 
 # Initialize bot with intents
 intents = discord.Intents.default()
+allowed_mentions = discord.AllowedMentions(everyone = True, roles = True, users = True)
+
 intents.message_content = True
 intents.members = True
 intents.reactions = True
 
-client = discord.Client(intents=intents)
+client = discord.Client(intents=intents, allowed_mentions=allowed_mentions)
 tree = app_commands.CommandTree(client)
 API_URL = os.getenv("API_URL")
 
