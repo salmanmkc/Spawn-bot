@@ -51,7 +51,7 @@
         "name": "Wizzard",
         "faction": "Village",
         "mystic": true,
-        "emoji": ":man_mage:",
+        "emoji": ":magic_wand:",
         "description": "check mysticism",
         "night_action": "check mysticism",
         "night_action_on": "alive",
@@ -105,6 +105,12 @@
         "emoji": "\ud83e\uddd1\u200d\ud83c\udf3e",
         "secret_emoji": "💪🧑‍🌾"
     },
+    "Farmer": {
+        "name": "Farmer",
+        "faction": "Village",
+        "emoji": "\ud83e\uddd1\u200d\ud83c\udf3e",
+        "secret_emoji": "🧑‍🌾"
+    },
     "Bard": {
         "name": "Bard",
         "faction": "Village",
@@ -133,8 +139,8 @@
         "faction": "Village",
         "emoji": "\u271d\ufe0f"
     },
-    "Sinner ": {
-        "name": "Sinner ",
+    "Sinner": {
+        "name": "Sinner",
         "faction": "Village",
         "corrupted": true,
         "emoji": "\ud83d\ude08"
@@ -157,5 +163,10 @@
         "name": "Jester",
         "faction": "Third Party",
         "emoji": "\ud83c\udfad"
+    },
+    "Guardian Angel": {
+        "name": "Guardian Angel",
+        "faction": "Third Party",
+        "emoji": ":wing:"
     }
 }

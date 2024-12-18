@@ -31,7 +31,7 @@ async def intialize_game(
         'day_number': 0,
         'night_actions': {},
         'day_nominations': {},
-        'role_id': '<@&1313162194086793286>'
+        'role_id': '<@&1316122485741191179>'# <@&1313162194086793286>'
     }
     current_game = GAMES[game_id]
     
@@ -314,34 +314,83 @@ class GameSetupView(View):
             player = GAMES[self.game_id]['players'][player_id]
             user = await interaction.client.fetch_user(player_id)
             if player['role']:
-                await user.send(f"The game started and you are... {player['role']['name']} {player['role']['emoji']}")
+                await user.send(f"The game started and you are the... {player['role']['name']} {player['role']['emoji']}")
 
 class ModPanelView(View):
     # sent via dm
-    def __init__(self, game_id, data={}):
-        self.selected_users = []
+    def __init__(self, game_id, data={}, manual_killing=True):
+        self.selected_players = {}
+        self.selected_players_for_kill = []
         self.night_action_selects = {}
         self.game_id = game_id
         self.data = data
+        self.manual_killing = manual_killing
         
         super().__init__()
+        if manual_killing:
+            total_players = GAMES[self.game_id]['players']
+            if len(total_players) != 0:
+                options = [
+                    SelectOption(label=f"{total_players[role_key]['username']}", value=role_key)
+                    for role_key in total_players
+                ]
+                self.ballot_select = Select(placeholder="Select players for the ballot", min_values=1, max_values=len(options), options=options) # 
+                self.ballot_select.callback = self.ballot_select_callback
+                self.add_item(self.ballot_select)
+                
+                self.kill_select = Select(placeholder="Select players to kill", min_values=1, max_values=len(options), options=options) # 
+                self.kill_select.callback = self.kill_select_callback
+                self.add_item(self.kill_select)
+                
+                #self.revive_select = Select(placeholder="Select players to revive", min_values=1, max_values=len(options), options=options) # 
+                #self.revive_select.callback = self.kill_select_callback
+                #self.add_item(self.revive_select)
+            
+    
+    async def ballot_select_callback(self, interaction: discord.Interaction):
+        self.selected_players = {}
+        for value in self.ballot_select.values:
+            player = GAMES[self.game_id]['players'][int(value)]
+            self.selected_players[int(value)] = player
+        
+        await interaction.response.edit_message(view=self)
+            
+        await interaction.followup.send(
+            f"Players in ballot updated", ephemeral=True
+        )
+    
+    async def kill_select_callback(self, interaction: discord.Interaction):
+        self.selected_players_for_kill = []
+        for value in self.kill_select.values:
+            player = GAMES[self.game_id]['players'][int(value)]
+            self.selected_players_for_kill.append(
+                player
+            )
+        logger.info(f'selected_players_for_kill {self.selected_players_for_kill}')
+        
+        await interaction.response.edit_message(view=self)
+        
+        await interaction.followup.send(
+            f"Players set for kill updated", ephemeral=True
+        )
         
     def set_child_disabled(self, label, disabled):
         for child in self.children:
             if type(child) is Button and child.label == label:
                 child.disabled = disabled
     
-    # @discord.ui.button(label="Start Nominations", style=discord.ButtonStyle.primary)
-    # async def start_nominations(self, interaction: discord.Interaction, button: discord.ui.Button):
-    #    await interaction.response.send_message("You started nominations", ephemeral=True)
-
-    
-    @discord.ui.button(label="Start Nominations", style=discord.ButtonStyle.primary, disabled=True)
+    @discord.ui.button(label="Start Accusations", style=discord.ButtonStyle.primary, disabled=True)
     async def start_nominations(self, interaction: discord.Interaction, button: discord.ui.Button):
         channel = interaction.client.get_channel(GAMES[self.game_id]['channel_id'])
-        total_players = GAMES[self.game_id]['players']
-        alive_players_ids = [p_id for p_id in total_players if total_players[p_id]['is_alive']]
-        alive_players_options = [(p['username'], p_id) for p_id, p in total_players.items() if p['is_alive']]
+        
+        if self.manual_killing:
+            alive_players_ids = [p_id for p_id in self.selected_players]
+            alive_players_options = [(p['username'], p_id) for p_id, p in self.selected_players.items()]
+        else:
+            total_players = GAMES[self.game_id]['players']
+            alive_players_ids = [p_id for p_id in total_players if total_players[p_id]['is_alive']]
+            alive_players_options = [(p['username'], p_id) for p_id, p in total_players.items() if p['is_alive']]
+        
         # send votes to users
         await intialize_vote(
             interaction,
@@ -353,8 +402,8 @@ class ModPanelView(View):
         )
         
         # notify
-        await channel.send(f"{GAMES[self.game_id]['role_id']} Nominations have started, a ballot was sent to you privately")
-        await interaction.response.send_message("You started Nominations", ephemeral=True)
+        await channel.send(f"{GAMES[self.game_id]['role_id']} Accusations have started, a ballot was sent to you privately")
+        await interaction.response.send_message("You started Accusations", ephemeral=True)
     
     async def on_nomintions_close(self, interaction, vote_counts):
         day_number = GAMES[self.game_id]['day_number']
@@ -366,12 +415,8 @@ class ModPanelView(View):
         # {(434904918709633025, 'Jai'): 1}
         GAMES[self.game_id]['day_nominations'][day_number] = top_two_poll_results(vote_counts)
         
-        logger.info(f"NOMINATIONS {GAMES[self.game_id]['day_nominations'][day_number]}")
-        
-        channel = interaction.client.get_channel(GAMES[self.game_id]['channel_id'])
-        
         # enable next buttons
-        self.set_child_disabled('Start Nominations', disabled=True)
+        self.set_child_disabled('Start Accusations', disabled=True)
         self.set_child_disabled('Start Execution', disabled=False)
         
         await edit_moderators_pannel(game_id=self.game_id, interaction=interaction, view=self)
@@ -380,21 +425,27 @@ class ModPanelView(View):
     async def start_executions(self, interaction: discord.Interaction, button: discord.ui.Button):
         day_number = GAMES[self.game_id]['day_number']
         total_players = GAMES[self.game_id]['players']
-        nominations_options = GAMES[self.game_id]['day_nominations'][day_number]
-        nomination_ids = [x[1] for x in nominations_options]
+        
+        if self.manual_killing:
+            options = [(p['username'], p_id) for p_id, p in self.selected_players.items()]
+            options_ids = [p_id for p_id in self.selected_players]
+        else:
+            options = GAMES[self.game_id]['day_nominations'][day_number]
+            options_ids = [x[1] for x in options]
+            options = list(options.keys())
         
         # alive, outside of ballot or seducer
         elegible_players_ids = [
             p_id
             for p_id, p in total_players.items()
-            if p['is_alive'] and (p.get('can_vote_on_ballot') or p_id not in nomination_ids)
+            if p['is_alive'] and (p.get('can_vote_on_ballot') or p_id not in options_ids)
         ]
         channel = interaction.client.get_channel(GAMES[self.game_id]['channel_id'])
         await intialize_vote(
             interaction,
             channel,
             participant_ids=elegible_players_ids,
-            options=list(nominations_options.keys()),
+            options=options,
             notify_to=GAMES[self.game_id]['moderators'],
             on_close=self.on_executions_close,
         )
@@ -435,6 +486,11 @@ class ModPanelView(View):
         self.set_child_disabled('Start Vote', disabled=True)
         await interaction.response.edit_message(view=self)
         
+        # daytime executions
+        if self.manual_killing:
+            deaths = self.kill_selection()
+            await self.notify_deaths(deaths=deaths, channel=channel, is_night=False)
+        
         await interaction.followup.send("You started Night phase", ephemeral=True)
         
     async def message_night_actions(self, interaction, night_deaths_actions=False):
@@ -448,6 +504,11 @@ class ModPanelView(View):
             role = player_data['role']
             night_action = role.get('night_action')
             night_action_on = role.get('night_action_on')
+            night_action_from_day = role.get('night_action_from_day', 0)
+            
+            if day_number < night_action_from_day:
+                continue
+            
             if not night_action:
                 continue
             
@@ -466,7 +527,7 @@ class ModPanelView(View):
                     elif night_action_on == 'others alive':
                         selections = {p_id:total_players[p_id] for p_id in total_players if p_id != player_id}
             if len(selections) == 0:
-                return
+                continue
             
             # message
             options = [
@@ -476,7 +537,7 @@ class ModPanelView(View):
             night_action_select = Select(placeholder=f"Select player to {night_action}", min_values=1, max_values=1, options=options) #
             
             night_action_select.callback = self.role_night_action_select_callback
-            self.night_action_selects[player_id] = night_action_select
+            self.night_action_selects[int(player_id)] = night_action_select
             
             view = View()
             view.add_item(night_action_select)
@@ -487,7 +548,7 @@ class ModPanelView(View):
     async def role_night_action_select_callback(self, interaction: discord.Interaction):
         player_data = GAMES[self.game_id]['players'][interaction.user.id]
         role = player_data['role']
-        night_action_select = self.night_action_selects[interaction.user.id]
+        night_action_select = self.night_action_selects[int(interaction.user.id)]
         day_number = GAMES[self.game_id]['day_number']
         night_order = role['night_order']
         
@@ -507,6 +568,7 @@ class ModPanelView(View):
             GAMES[self.game_id]['night_actions'][day_number] = {}
         
         # set night action
+        logger.info(f"night_actions AAAAAAAAAAAA {night_order}")
         GAMES[self.game_id]['night_actions'][day_number][night_order] = {
             'role': role,
             'selections': selections
@@ -536,14 +598,33 @@ class ModPanelView(View):
         
         # disable day, enable night
         button.disabled=True
-        self.set_child_disabled('Start Nominations', disabled=False)
+        self.set_child_disabled('Start Accusations', disabled=False)
         await interaction.response.edit_message(view=self)
         
+        logger.info(f"night_calculations")
+        await self.night_calculations(interaction, channel)
         await interaction.followup.send("You started Day phase", ephemeral=True)
-        await self.night_calculations(channel)
     
-    async def night_calculations(self, channel):
+    def kill_selection(self):
         day_number = GAMES[self.game_id]['day_number']
+        deaths = []
+        logger.info(f'selected_players_for_kill {self.selected_players_for_kill}')
+        for death_player in self.selected_players_for_kill:
+            GAMES[self.game_id]['players'][death_player['id']]['is_alive'] = False
+            GAMES[self.game_id]['players'][death_player['id']]['death_at_day'] = day_number
+            deaths.append(death_player['username'])
+        self.selected_players_for_kill = []
+        return deaths
+    
+    async def notify_deaths(self, deaths, channel, is_night):
+        if deaths:
+            await channel.send(f"{' and '.join(deaths)} {'were' if len(deaths) > 1 else 'was'} {'killed during the night' if is_night else 'burnt today'}")
+        else:
+            await channel.send(f"no one was {'killed during the night' if is_night else 'burnt today'}")
+                
+    async def night_calculations(self, interaction, channel):
+        logger.info(f"night_calculations 2")
+        day_number = GAMES[self.game_id]['day_number'] - 1
         total_players = GAMES[self.game_id]['players']
         if not (day_number in GAMES[self.game_id]['night_actions']):
             return
@@ -555,7 +636,9 @@ class ModPanelView(View):
         death_attempts = []
         protection = []
         
+        logger.info(f"total player action {total_players}")
         for p_id, player in total_players.items():
+            logger.info(f"player action {p_id}")
             if not player['is_alive']:
                 continue
             role = player['role']
@@ -572,21 +655,29 @@ class ModPanelView(View):
                 night_action = night_actions.get(role['night_order'])
                 for selection in night_action['selections']:
                     is_cv_check_corrupt = selection['role'].get('corrupted', False)
+                
+                logger.info(f"CV check {is_cv_check_corrupt}")
+                user = await interaction.client.fetch_user(p_id)
+                await user.send(f"**{selection['username']}** is {'corrupt :skull:' if is_cv_check_corrupt else 'non corrupt 👍'}")
         # deaths
-        deaths = []
-        for death_player in death_attempts:
-            death_confirmed = True
-            for protected_player in protection:
-                if death_player['id'] == protected_player['id']:
+        if self.manual_killing:
+            deaths = self.kill_selection()
+        else:
+            deaths = []
+            for death_player in death_attempts:
+                death_confirmed = True
+                for protected_player in protection:
+                    if death_player['id'] == protected_player['id']:
+                        death_confirmed = False
+                if death_player.get('night_action') == 'self protect from shadow attacks':
                     death_confirmed = False
-            if death_player.get('night_action') == 'self protect from shadow attacks':
-                death_confirmed = False
-            if not death_confirmed:
-                continue
-            GAMES[self.game_id]['players'][death_player['id']]['is_alive'] = False
-            GAMES[self.game_id]['players'][death_player['id']]['death_at_day'] = day_number
-            deaths.append(death_player['username'])
-        await channel.send(f"{' and '.join(deaths)} {'were' if len(deaths) > 1 else 'was'} killed during the night")
+                if not death_confirmed:
+                    continue
+                GAMES[self.game_id]['players'][death_player['id']]['is_alive'] = False
+                GAMES[self.game_id]['players'][death_player['id']]['death_at_day'] = day_number
+                deaths.append(death_player['username'])
+        
+        await self.notify_deaths(deaths=deaths, channel=channel, is_night=True)
             
         # news
         for p_id in total_players:

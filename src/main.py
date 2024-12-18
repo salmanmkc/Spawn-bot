@@ -5,7 +5,7 @@ from discord.ext import commands
 import os
 import logging
 import logging.handlers
-from polls import intialize_vote
+from polls import intialize_vote, SetupBallotView
 from game import intialize_game
 from collections import deque, defaultdict
 from roles import load_roles
@@ -69,5 +69,44 @@ async def start_game(interaction:discord.Interaction):
     except Exception as e:
         logger.error(e)
         await interaction.response.send_message("Server Error")
+
+@tree.command(name="vote", description="Starts a vote", guild=discord.Object(id=GUILD))
+async def start_vote(interaction:discord.Interaction):
+    try:
+        logger.info("vote command called")
+        setup_view = SetupBallotView(interaction.user.id, )
+        await interaction.response.send_message(view=setup_view, ephemeral=True)
+    except Exception as e:
+        logger.error(e)
+        await interaction.response.send_message("Server Error")
+
+@tree.command(name="get_users", description="Gets users in your voice channel", guild=discord.Object(id=GUILD))
+async def get_voice_users(interaction: discord.Interaction):
+    """
+    Gets all usernames in the user's current voice channel and displays them in an embedded message.
+    """
+    # Ensure the command user is in a voice channel
+    if interaction.user.voice and interaction.user.voice.channel:
+        channel = interaction.user.voice.channel
+        members = channel.members
+        usernames = [member.display_name for member in members]
+
+        # Create an embedded message
+        embed = discord.Embed(
+            title=f"Users in Voice Channel: {channel.name}",
+            description="\n".join(usernames) if usernames else "No users in this channel.",
+            color=discord.Color.blue()
+        )
+        embed.set_footer(text=f"Channel ID: {channel.id}")
+
+        await interaction.response.send_message(embed=embed)
+    else:
+        # User is not in a voice channel
+        embed = discord.Embed(
+            title="Error",
+            description="You are not in a voice channel. Please join one and try again.",
+            color=discord.Color.red()
+        )
+        await interaction.response.send_message(embed=embed)
 
 client.run(TOKEN)

@@ -4,7 +4,7 @@ import uuid
 from collections import Counter
 import logging
 
-logger = logging.getLogger('discord')
+logger = logging.getLogger('bot')
 
 
 POLLS = {}
@@ -120,12 +120,17 @@ async def intialize_vote(
         total_votes = len(POLLS[poll_id]['votes'])
         total_participants = len(participant_ids)
         
+        if not total_participants:
+            total_participants = '-'
+        
         for moderator_id in notify_to:
             moderator = await interaction.client.fetch_user(moderator_id)
             if not already_voted:
-                await moderator.send(f"user {user.display_name} voted for {vote} {total_votes}/{total_participants}")
+                await moderator.send(f"user **{user.display_name}** voted for **{vote}** {total_votes}/{total_participants}")
+                logger.info(f"user **{user.display_name}** voted for **{vote}** {total_votes}/{total_participants}")
             else:
-                await moderator.send(f"user {user.display_name} changed their vote, new vote for {vote} {total_votes}/{total_participants}")
+                await moderator.send(f"user **{user.display_name}** changed their vote, new vote for **{vote}** {total_votes}/{total_participants}")
+                logger.info(f"user **{user.display_name}** changed their vote, new vote for **{vote}** {total_votes}/{total_participants}")
     
     # Send the message with the button
     if participant_ids:
@@ -173,3 +178,73 @@ def top_two_poll_results(poll_results):
             break
     
     return result
+
+
+from discord.ui import UserSelect
+
+class SetupBallotView(View):
+    # sent via dm
+    def __init__(self, owner_id):
+        self.owner_id = owner_id
+        self.selected_participants = []
+        self.selected_ballot_options = []
+        
+        super().__init__()
+        self.participants_select = UserSelect(placeholder="Select participants", max_values=20) # 
+        self.participants_select.callback = self.participants_select_callback
+        self.add_item(self.participants_select)
+        
+        self.ballot_select = UserSelect(placeholder="Select ballot", max_values=20) # 
+        self.ballot_select.callback = self.ballot_select_callback
+        self.add_item(self.ballot_select)
+    
+    async def participants_select_callback(self, interaction: discord.Interaction):
+        self.selected_participants = self.participants_select.values
+        
+        await interaction.response.send_message(
+            f"Players in participation list updated", ephemeral=True
+        )
+    
+    async def ballot_select_callback(self, interaction: discord.Interaction):
+        self.selected_ballot_options = self.ballot_select.values
+        
+        await interaction.response.send_message(
+            f"Players in ballot list updated", ephemeral=True
+        )
+    
+    async def on_close(self, interaction, vote_counts):
+        # {(434904918709633025, 'Jai'): 1}
+        results = top_two_poll_results(vote_counts)
+        
+        user = await interaction.client.fetch_user(self.owner_id)
+        await user.send("Voting was closed")
+    
+    @discord.ui.button(label="set ballot same as participants", style=discord.ButtonStyle.success)
+    async def ballot_same_as_participants(self, interaction: discord.Interaction, button: discord.ui.Button):
+        user = interaction.user
+        self.selected_ballot_options = self.selected_participants
+        
+        await interaction.response.send_message(
+            f"Players in ballot list updated", ephemeral=True
+        )
+        
+    @discord.ui.button(label="start", style=discord.ButtonStyle.success)
+    async def start(self, interaction: discord.Interaction, button: discord.ui.Button):
+        logger.info("Vote started")
+        user = interaction.user
+        
+        await intialize_vote(
+            interaction=interaction,
+            channel=interaction.channel,
+            options=[(user.display_name, user.id) for user in self.selected_ballot_options],
+            participant_ids=[user.id for user in self.selected_participants],
+            notify_to=[user.id],
+            on_close=self.on_close
+        )
+        
+        # button.is_disabled = True
+        # await interaction.response.edit_message(view=self)
+        
+        await interaction.response.send_message(
+            f"Vote started, you will recieve the results via dm", ephemeral=True
+        )
